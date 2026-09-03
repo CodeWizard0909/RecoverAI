@@ -12,10 +12,13 @@ export async function POST() {
     const hours = istTime.getUTCHours(); // getUTCHours on the adjusted time gives the local IST hours
 
     // If it's strictly >= 22 (10 PM) or < 8 (8 AM)
+    /* 
+    TEMPORARILY DISABLED FOR HACKATHON DEMO
     if (hours >= 22 || hours < 8) {
       console.log('[Executor] Paused: Outside allowed contact hours (10 PM - 8 AM).');
       return NextResponse.json({ message: 'Paused due to time constraints' }, { status: 200 });
     }
+    */
 
     // 1. Fetch pending actions
     // Note: Supabase JS syntax for joins: select('*, failed_payments(*)')
