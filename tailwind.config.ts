@@ -70,15 +70,15 @@ const config: Config = {
         "space-sm": "0.75rem"
       },
       fontFamily: {
-        "headline-sm": ["Epilogue"],
-        "headline-lg-mobile": ["Epilogue"],
-        "body-sm": ["Hanken Grotesk"],
-        "body-strong": ["Hanken Grotesk"],
-        "body-default": ["Hanken Grotesk"],
-        "label-code": ["JetBrains Mono"],
-        "label-caps": ["Hanken Grotesk"],
-        "data-tabular-lg": ["JetBrains Mono"],
-        "data-tabular-md": ["JetBrains Mono"]
+        "headline-sm": ["var(--font-epilogue)"],
+        "headline-lg-mobile": ["var(--font-epilogue)"],
+        "body-sm": ["var(--font-hanken)"],
+        "body-strong": ["var(--font-hanken)"],
+        "body-default": ["var(--font-hanken)"],
+        "label-code": ["var(--font-jetbrains)"],
+        "label-caps": ["var(--font-hanken)"],
+        "data-tabular-lg": ["var(--font-jetbrains)"],
+        "data-tabular-md": ["var(--font-jetbrains)"]
       },
       fontSize: {
         "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "500" }],
