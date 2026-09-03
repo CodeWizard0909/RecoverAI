@@ -1,3 +1,4 @@
+export {};
 /**
  * Verification Harness for The AI Brain (Slice 03)
  * 
