@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { razorpayClient } from '@/lib/razorpay';
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 export async function POST() {
   try {
     // Check Time Stopping Rule (No contact between 10 PM and 8 AM IST)
@@ -32,6 +35,8 @@ export async function POST() {
       `)
       .eq('status', 'pending')
       .limit(10);
+
+    console.log('[DEBUG EXECUTOR] actions:', actions, 'fetchError:', fetchError);
 
     if (fetchError) {
       console.error('[Executor] Error fetching actions:', fetchError);

@@ -26,7 +26,7 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     // In a real app we'd use SWR or React Query. Here we just fetch on mount and after actions.
-    const response = await fetch('/api/demo/fetch-data');
+    const response = await fetch(`/api/demo/fetch-data?t=${Date.now()}`);
     if (response.ok) {
       const data = await response.json();
       setPayments(data.payments);
