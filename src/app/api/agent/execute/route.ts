@@ -5,6 +5,8 @@ import { razorpayClient } from '@/lib/razorpay';
 export async function POST() {
   try {
     // Check Time Stopping Rule (No contact between 10 PM and 8 AM IST)
+    /* 
+    TEMPORARILY DISABLED FOR HACKATHON DEMO
     const now = new Date();
     // Convert to IST (UTC +5:30)
     const istOffset = 5.5 * 60 * 60 * 1000;
@@ -12,8 +14,6 @@ export async function POST() {
     const hours = istTime.getUTCHours(); // getUTCHours on the adjusted time gives the local IST hours
 
     // If it's strictly >= 22 (10 PM) or < 8 (8 AM)
-    /* 
-    TEMPORARILY DISABLED FOR HACKATHON DEMO
     if (hours >= 22 || hours < 8) {
       console.log('[Executor] Paused: Outside allowed contact hours (10 PM - 8 AM).');
       return NextResponse.json({ message: 'Paused due to time constraints' }, { status: 200 });
@@ -96,10 +96,17 @@ export async function POST() {
         const plink = await razorpayClient.paymentLink.create(paymentLinkReq);
         console.log(`[Executor] Created Payment Link: ${plink.short_url}`);
 
+        // Append the link so the UI can detect and render it
+        const updatedReasoning = `${action.gemini_reasoning} | LINK: ${plink.short_url}`;
+
         // Mark action as executed
         await supabaseAdmin
           .from('recovery_actions')
-          .update({ status: 'executed', executed_at: new Date().toISOString() })
+          .update({ 
+            status: 'executed', 
+            executed_at: new Date().toISOString(),
+            gemini_reasoning: updatedReasoning
+          })
           .eq('id', action.id);
 
         successCount++;

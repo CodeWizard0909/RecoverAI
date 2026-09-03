@@ -279,17 +279,31 @@ export default function Dashboard() {
                     {/* Hidden Details */}
                     {p.recovery_actions && p.recovery_actions.length > 0 && (
                       <div className="mt-2.5 pt-2 flex flex-col space-y-1.5 hidden" id={`row-${p.id}-details`}>
-                        {p.recovery_actions.map((action: Record<string, string>) => (
+                        {p.recovery_actions.map((action: Record<string, string>) => {
+                          const reasoningParts = action.gemini_reasoning?.split(' | LINK: ') || [action.gemini_reasoning];
+                          const rationale = reasoningParts[0];
+                          const link = reasoningParts[1];
+
+                          return (
                           <div key={action.id} className="pb-2 border-b border-surface-container last:border-0">
                             <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
                               <span className="font-semibold text-on-surface">AI Rationale ({action.type}): </span> 
-                              {action.gemini_reasoning}
+                              {rationale}
                             </p>
-                            <div className="flex items-center justify-between text-outline font-label-code text-[10px] pt-1">
+                            {link && (
+                              <div className="mt-2 mb-1">
+                                <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-3 py-1.5 bg-secondary text-on-secondary rounded text-xs font-semibold shadow-sm hover:bg-secondary-container transition-all">
+                                  <span className="material-symbols-outlined text-[14px]">link</span>
+                                  Open Payment Link
+                                </a>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between text-outline font-label-code text-[10px] pt-1 mt-1">
                               <span>Status: {action.status}</span>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
