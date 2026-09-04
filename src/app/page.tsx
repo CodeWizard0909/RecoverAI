@@ -220,7 +220,7 @@ export default function Dashboard() {
             className="px-5 py-2.5 rounded-full text-sm font-semibold bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center gap-2 disabled:opacity-50"
           >
             {injecting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-amber-400" />}
-            Inject Webhook
+            ① Simulate Failure
           </button>
           <button 
             onClick={handleTrigger}
@@ -228,7 +228,7 @@ export default function Dashboard() {
             className="px-5 py-2.5 rounded-full text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-emerald-950 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center gap-2 disabled:opacity-50"
           >
             {triggering ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
-            Run AI Brain
+            ② Analyze & Plan
           </button>
         </div>
       </nav>
@@ -346,9 +346,10 @@ export default function Dashboard() {
           <div className="divide-y divide-white/5">
             <AnimatePresence>
               {payments.length === 0 && !loading && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-12 text-center text-white/40">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-12 text-center text-white/40 space-y-4">
                   <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                  <p>Inbox zero. All revenue recovered.</p>
+                  <p>All revenue recovered.</p>
+                  <p className="text-sm">Click "① Simulate Failure" above to generate a test case and watch the AI agent work.</p>
                 </motion.div>
               )}
               
@@ -397,17 +398,12 @@ export default function Dashboard() {
                           {/* Only show the latest (most recent) action — no duplicates */}
                           {[p.recovery_actions[p.recovery_actions.length - 1]].map((action: Record<string, string>) => {
                             const reasoning = action.gemini_reasoning || '';
-                            const churnRiskMatch = reasoning.match(/\[CHURN_RISK:\s*(\d+)%\]/);
-                            const churnRisk = churnRiskMatch ? parseInt(churnRiskMatch[1], 10) : null;
-                            const isBargaining = reasoning.includes('[BARGAINING_ACTIVE]');
                             const linkMatch = reasoning.match(/\| LINK: (https:\/\/[^\s|]+)/);
                             const link = linkMatch ? linkMatch[1] : null;
                             const partialLinkMatch = reasoning.match(/\| PARTIAL_LINK: (https:\/\/[^\s|]+)/);
                             const partialLink = partialLinkMatch ? partialLinkMatch[1] : null;
                             
                             const rationale = reasoning
-                              .replace(/\[CHURN_RISK: \d+%\]/g, '')
-                              .replace(/\[BARGAINING_ACTIVE\]/g, '')
                               .replace(/\| LINK: https:\/\/[^\s|]+/g, '')
                               .replace(/\| PARTIAL_LINK: https:\/\/[^\s|]+/g, '')
                               .trim();
@@ -422,58 +418,70 @@ export default function Dashboard() {
                                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/10 text-white/90 uppercase tracking-wider font-mono">
                                     {action.type}
                                   </span>
-                                  {churnRisk !== null && (
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider font-mono border ${
-                                      churnRisk > 70 ? 'bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.2)]' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                    }`}>
-                                      {churnRisk > 70 ? '🚨 High Churn Risk: ' : 'Risk: '} {churnRisk}%
+                                  {link && (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                      🔗 Link Generated
                                     </span>
                                   )}
-                                  {isBargaining && (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider font-mono">
-                                      🤝 Bargaining Strategy
+                                  {partialLink && (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                      💰 50% Option
+                                    </span>
+                                  )}
+                                  {action.type === 'escalate' && (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                                      ⚠️ Escalated to Slack
                                     </span>
                                   )}
                                 </div>
                                 
-                                <p className="text-[13px] text-white/70 leading-relaxed mb-3">
-                                  {rationale}
-                                </p>
-                                
-                                <div className="flex flex-wrap gap-2 mt-auto">
-                                  {!isRecovered && link && (
-                                    <button
-                                      onClick={() => openRazorpayModal(p, false)}
-                                      disabled={payingId === p.id}
-                                      className="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
-                                    >
-                                      {payingId === p.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
-                                      Pay Full
-                                    </button>
-                                  )}
-                                  {!isRecovered && partialLink && (
-                                    <button
-                                      onClick={() => openRazorpayModal(p, true)}
-                                      disabled={payingId === p.id}
-                                      className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
-                                    >
-                                      {payingId === p.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Wallet className="w-3 h-3" />}
-                                      Pay 50% Upfront
-                                    </button>
-                                  )}
+                                <details className="mt-2 group">
+                                  <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wide text-white/50 hover:text-white/80 transition-colors list-none flex items-center select-none">
+                                    <span className="mr-2 opacity-50 group-open:rotate-90 transition-transform">▶</span>
+                                    View Agent Details
+                                  </summary>
                                   
-                                  {/* Feature 3: Voice AI Dispatch Button (Only for High Risk) */}
-                                  {!isRecovered && churnRisk !== null && churnRisk >= 70 && (
-                                    <button 
-                                      onClick={() => handleVoiceDispatch(p.id)}
-                                      disabled={dispatchingVoice === p.id}
-                                      className="ml-auto px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
-                                    >
-                                      {dispatchingVoice === p.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <PhoneCall className="w-3.5 h-3.5" />}
-                                      Dispatch Voice AI
-                                    </button>
-                                  )}
-                                </div>
+                                  <div className="mt-3 pl-4 border-l-2 border-white/10 space-y-3 pb-1">
+                                    <p className="text-[13px] text-white/70 leading-relaxed italic">
+                                      "{rationale}"
+                                    </p>
+                                    
+                                    <div className="flex flex-wrap gap-2">
+                                      {!isRecovered && link && (
+                                        <button
+                                          onClick={() => openRazorpayModal(p, false)}
+                                          disabled={payingId === p.id}
+                                          className="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                        >
+                                          {payingId === p.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                                          Pay Full
+                                        </button>
+                                      )}
+                                      {!isRecovered && partialLink && (
+                                        <button
+                                          onClick={() => openRazorpayModal(p, true)}
+                                          disabled={payingId === p.id}
+                                          className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                        >
+                                          {payingId === p.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Wallet className="w-3 h-3" />}
+                                          Pay 50% Upfront
+                                        </button>
+                                      )}
+                                      
+                                      {/* Feature 3: Voice AI Dispatch Button (Only for High Risk) */}
+                                      {!isRecovered && (partialLink || action.type === 'escalate') && (
+                                        <button 
+                                          onClick={() => handleVoiceDispatch(p.id)}
+                                          disabled={dispatchingVoice === p.id}
+                                          className="ml-auto px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                        >
+                                          {dispatchingVoice === p.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <PhoneCall className="w-3.5 h-3.5" />}
+                                          Dispatch Voice AI
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </details>
                               </div>
                             );
                           })}
