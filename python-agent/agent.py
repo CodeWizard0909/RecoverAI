@@ -190,7 +190,7 @@ def process_pending_failures():
                 """
                 
                 chat = ai_client.chats.create(
-                    model='gemini-3.5-flash-lite',
+                    model='gemini-flash-latest',
                     config=types.GenerateContentConfig(
                         temperature=0.2,
                         tools=tools
