@@ -413,6 +413,9 @@ def process_pending_failures():
                 
                 logger.info(f"🎯 [Agent] Completed reasoning for payment {payment['id']}")
                 success_count += 1
+                
+                # Pace requests to respect the 15 Requests Per Minute (RPM) free tier quota limit
+                time.sleep(4.5)
             except Exception as e:
                 logger.error(f"[Agent] Failed to process payment {payment['id']}: {e}")
                 
