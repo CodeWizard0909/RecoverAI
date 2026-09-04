@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import Vapi from "@vapi-ai/web";
 import { motion, AnimatePresence } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import {
@@ -44,6 +45,7 @@ export default function Dashboard() {
   const [injecting, setInjecting] = useState(false);
   const [dispatchingVoice, setDispatchingVoice] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [callStatus, setCallStatus] = useState<string>("disconnected");
 
   // Stats
   const [totalAtRisk, setTotalAtRisk] = useState(0);
@@ -54,6 +56,23 @@ export default function Dashboard() {
   const [chartData, setChartData] = useState<{time: string, risk: number, recovered: number}[]>([]);
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const vapiRef = useRef<any>(null);
+
+  // Initialize Vapi on mount
+  useEffect(() => {
+    vapiRef.current = new Vapi("9fd2ba21-4a32-4599-9e00-56ee015eb869");
+    vapiRef.current.on('call-start', () => setCallStatus("active"));
+    vapiRef.current.on('call-end', () => {
+      setCallStatus("disconnected");
+      setDispatchingVoice(null);
+    });
+    
+    return () => {
+      if (vapiRef.current) {
+        vapiRef.current.stop();
+      }
+    };
+  }, []);
 
   // Inject Razorpay SDK script once on mount
   useEffect(() => {
@@ -202,12 +221,39 @@ export default function Dashboard() {
   };
 
   const handleVoiceDispatch = async (paymentId: string) => {
+    const payment = payments.find(p => p.id === paymentId);
+    if (!payment) return;
+
+    if (callStatus === "active") {
+      vapiRef.current?.stop();
+      return;
+    }
+
     setDispatchingVoice(paymentId);
-    // In a real app, this would hit /api/voice/dispatch which calls Bland AI.
-    // We simulate the latency here for the demo.
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    setDispatchingVoice(null);
-    alert("Voice Agent Dispatched! The customer's phone is ringing.");
+    
+    try {
+      await vapiRef.current?.start({
+        model: {
+          provider: "openai",
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: `You are Sarah, an expert AI recovery agent. You are calling a VIP customer whose email is ${payment.customer_email}. Their recent transaction of ${(payment.amount / 100).toFixed(2)} INR failed due to: ${payment.failure_reason}. Be extremely empathetic, apologize for the issue, and inform them that you will securely email them a direct payment link so they don't lose their access. Do not ask for card details.`
+            }
+          ]
+        },
+        voice: {
+          provider: "11labs",
+          voiceId: "burt"
+        },
+        firstMessage: `Hi there, is this the owner of the ${payment.customer_email} account? This is Sarah from support, I'm calling about your recent payment.`
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Microphone access denied or error starting call.");
+      setDispatchingVoice(null);
+    }
   };
 
   // Format currency
@@ -535,11 +581,11 @@ export default function Dashboard() {
                                       {!isRecovered && (partialLink || action.type === 'escalate') && (
                                         <button 
                                           onClick={() => handleVoiceDispatch(p.id)}
-                                          disabled={dispatchingVoice === p.id}
-                                          className="ml-auto px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                          disabled={dispatchingVoice === p.id && callStatus !== "active"}
+                                          className={`ml-auto px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50 border ${callStatus === "active" && dispatchingVoice === p.id ? "bg-red-500/20 hover:bg-red-500/30 text-red-400 border-red-500/30 animate-pulse" : "bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border-purple-500/30"}`}
                                         >
-                                          {dispatchingVoice === p.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <PhoneCall className="w-3.5 h-3.5" />}
-                                          Dispatch Voice AI
+                                          {dispatchingVoice === p.id && callStatus !== "active" ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <PhoneCall className="w-3.5 h-3.5" />}
+                                          {callStatus === "active" && dispatchingVoice === p.id ? "End Call" : "Dispatch Voice AI"}
                                         </button>
                                       )}
                                     </div>

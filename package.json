@@ -12,6 +12,7 @@
   "dependencies": {
     "@google/genai": "^2.21.0",
     "@supabase/supabase-js": "^2.115.0",
+    "@vapi-ai/web": "^2.7.0",
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
     "framer-motion": "^13.2.0",
