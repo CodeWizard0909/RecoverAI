@@ -315,7 +315,7 @@ def process_pending_failures():
                 """
                 
                 chat = ai_client.chats.create(
-                    model='gemini-3.7-flash',
+                    model='gemini-3.5-flash-lite',
                     config=types.GenerateContentConfig(
                         temperature=0.2,
                         tools=[types.Tool(function_declarations=[
@@ -417,7 +417,8 @@ def process_pending_failures():
                 success_count += 1
                 
                 # Pace requests to respect the 15 Requests Per Minute (RPM) free tier quota limit
-                time.sleep(4.5)
+                # Each payment loop uses 2 requests (prompt + tool). 60 / 15 * 2 = 8 seconds.
+                time.sleep(8.5)
             except Exception as e:
                 logger.error(f"[Agent] Failed to process payment {payment['id']}: {e}")
                 
