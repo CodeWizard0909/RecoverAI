@@ -346,7 +346,7 @@ def process_pending_failures():
                                 time.sleep(retry_delay)
                             else:
                                 logger.error(f"❌ API 429 Quota Exceeded after {attempt + 1} attempts. Giving up on this payment.")
-                                return f"Error: Gemini API quota exceeded. Please try again later or upgrade your plan."
+                                return "Error: Gemini API quota exceeded. Please try again later or upgrade your plan."
                         else:
                             raise api_err
 
@@ -409,7 +409,7 @@ def process_pending_failures():
                                         time.sleep(retry_delay)
                                     else:
                                         logger.error(f"❌ API 429 Quota Exceeded after {attempt + 1} attempts on tool response. Giving up on this payment.")
-                                        return f"Error: Gemini API quota exceeded during tool execution. Please try again later."
+                                        return "Error: Gemini API quota exceeded during tool execution. Please try again later."
                                 else:
                                     raise api_err
                 
