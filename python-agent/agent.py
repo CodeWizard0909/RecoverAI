@@ -196,9 +196,20 @@ def process_pending_failures():
                         tools=tools
                     )
                 )
+                import time
                 
-                response = chat.send_message(system_instruction)
-                
+                # Handle 503s on initial prompt
+                for attempt in range(3):
+                    try:
+                        response = chat.send_message(system_instruction)
+                        break
+                    except Exception as api_err:
+                        if "503" in str(api_err) and attempt < 2:
+                            logger.warning(f"⚠️ API 503 Error on prompt. Retrying in {2 ** attempt}s...")
+                            time.sleep(2 ** attempt)
+                        else:
+                            raise api_err
+                            
                 max_turns = 3
                 for _ in range(max_turns):
                     if not response.function_calls:
@@ -226,12 +237,22 @@ def process_pending_failures():
                             
                         logger.info(f"📝 [Agent] Tool {fn.name} result: {str(result)[:100]}...")
                         
-                        response = chat.send_message(
-                            types.Part.from_function_response(
-                                name=fn.name,
-                                response={"result": result}
-                            )
-                        )
+                        # Handle 503s on tool response
+                        for attempt in range(3):
+                            try:
+                                response = chat.send_message(
+                                    types.Part.from_function_response(
+                                        name=fn.name,
+                                        response={"result": result}
+                                    )
+                                )
+                                break
+                            except Exception as api_err:
+                                if "503" in str(api_err) and attempt < 2:
+                                    logger.warning(f"⚠️ API 503 Error. Retrying in {2 ** attempt}s...")
+                                    time.sleep(2 ** attempt)
+                                else:
+                                    raise api_err
                 
                 logger.info(f"🎯 [Agent] Completed reasoning for payment {payment['id']}")
                 success_count += 1
