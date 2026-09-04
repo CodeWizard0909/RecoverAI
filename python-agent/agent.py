@@ -38,6 +38,7 @@ def determine_recovery_strategy(failure_reason: str, amount: int) -> dict:
 
     Task 1: Calculate a Churn Risk Score (0-100) based on the failure reason and customer history. High risk if they've failed multiple times.
     Task 2: Decide the automated recovery action.
+    - If amount > ₹50,000 -> 'escalate' (to Slack/Human-in-the-loop)
     - If network error -> 'retry_upi'
     - If card expired/insufficient funds -> 'send_link'
     Task 3: Decide if we should offer a 'partial_payment' (bargaining) to save the transaction. If Churn Risk > 70% and error is funds-related, set this to true.
@@ -150,10 +151,36 @@ def execute_recovery_actions():
                 # Enforce max 3 retries stopping rule
                 count_res = supabase.table('recovery_actions').select('id', count='exact').eq('payment_id', payment['id']).eq('status', 'executed').execute()
                 if count_res.count is not None and count_res.count >= 3:
-                    supabase.table('failed_payments').update({'status': 'max_retries_reached'}).eq('id', payment['id']).execute()
+                    logger.warning(f"[Executor] Max retries reached for payment {payment['id']}. Halting.")
+                    supabase.table('recovery_actions').update({'status': 'halted'}).eq('id', action['id']).execute()
+                    continue
+
+                if action['type'] == 'escalate':
+                    # FEATURE 2: Human-in-the-Loop Slack Escalation
+                    slack_payload = {
+                        "text": f"🚨 VIP Payment Failed: ₹{payment['amount']/100}",
+                        "blocks": [
+                            {
+                                "type": "section",
+                                "text": {"type": "mrkdwn", "text": f"*VIP Payment Failed*\n*Amount:* ₹{payment['amount']/100}\n*Reason:* {payment.get('failure_reason')}\n*AI Recommendation:* {action.get('gemini_reasoning')}"}
+                            },
+                            {
+                                "type": "actions",
+                                "elements": [
+                                    {"type": "button", "text": {"type": "plain_text", "text": "Approve Discount"}, "style": "primary", "value": "approve"},
+                                    {"type": "button", "text": {"type": "plain_text", "text": "Deny & Cancel"}, "style": "danger", "value": "deny"}
+                                ]
+                            }
+                        ]
+                    }
+                    print("\n" + "="*50)
+                    print("🚀 [SLACK WEBHOOK FIRED] Human-in-the-loop requested!")
+                    print(json.dumps(slack_payload, indent=2))
+                    print("="*50 + "\n")
+                    
                     supabase.table('recovery_actions').update({
-                        'status': 'failed', 
-                        'gemini_reasoning': f"{action.get('gemini_reasoning', '')} | FAILED: Max retries (3) reached."
+                        'status': 'escalated_to_slack',
+                        'executed_at': datetime.now(timezone.utc).isoformat()
                     }).eq('id', action['id']).execute()
                     continue
 

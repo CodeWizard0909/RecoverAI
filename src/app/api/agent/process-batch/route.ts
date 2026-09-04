@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
-import { determineRecoveryStrategy } from '@/lib/agent';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';

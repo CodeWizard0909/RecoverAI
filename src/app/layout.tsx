@@ -17,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`light ${epilogue.variable} ${hanken.variable} ${jetbrains.variable}`}>
+    <html lang="en" className={`dark ${epilogue.variable} ${hanken.variable} ${jetbrains.variable}`}>
       <head>
         {/* We keep Material Symbols as a standard link because next/font/google doesn't fully support icon fonts natively */}
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
