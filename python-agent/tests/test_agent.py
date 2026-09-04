@@ -35,3 +35,58 @@ def test_create_recovery_link(mock_supabase, mock_rzp):
     assert "Successfully created recovery link" in result
     mock_rzp.payment_link.create.assert_called_once()
     mock_supabase.table().insert.assert_called()
+
+# =========================================================================
+# LOOP & VALIDATION TESTS
+# =========================================================================
+
+from agent import process_pending_failures
+from pydantic import ValidationError
+
+@patch('agent.ai_client')
+@patch('agent.supabase')
+def test_process_pending_failures(mock_supabase, mock_ai_client):
+    # Mock supabase queries
+    mock_failed_payments = MagicMock()
+    mock_failed_payments.data = [{'id': 'pay_test', 'amount': 100000, 'failure_reason': 'test', 'customer_email': 'test@test.com'}]
+    
+    mock_existing_actions = MagicMock()
+    mock_existing_actions.count = 0
+    
+    # When table() is called, return a mock that handles both select chains
+    def table_side_effect(name):
+        mock_table = MagicMock()
+        if name == 'failed_payments':
+            mock_table.select.return_value.eq.return_value.limit.return_value.execute.return_value = mock_failed_payments
+        elif name == 'recovery_actions':
+            mock_table.select.return_value.eq.return_value.execute.return_value = mock_existing_actions
+        return mock_table
+        
+    mock_supabase.table.side_effect = table_side_effect
+    
+    # Mock gemini chat session
+    mock_chat = MagicMock()
+    mock_ai_client.chats.create.return_value = mock_chat
+    
+    # Mock LLM sending a tool call
+    mock_response = MagicMock()
+    mock_fn_call = MagicMock()
+    mock_fn_call.name = 'get_customer_context'
+    mock_fn_call.args = {'email': 'test@test.com'}
+    mock_response.function_calls = [mock_fn_call]
+    
+    # Second turn: LLM stops tool calling
+    mock_response_done = MagicMock()
+    mock_response_done.function_calls = []
+    
+    mock_chat.send_message.side_effect = [mock_response, mock_response_done]
+    
+    success_count = process_pending_failures()
+    assert success_count == 1
+    mock_chat.send_message.assert_called()
+
+from agent import EscalateArgs
+def test_pydantic_validation_error():
+    with pytest.raises(ValidationError):
+        # Missing required strategy_reasoning, amount is wrong type
+        EscalateArgs(payment_id="pay_123", amount="not_an_int", reason="Network drop")

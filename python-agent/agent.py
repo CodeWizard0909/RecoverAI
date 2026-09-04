@@ -179,14 +179,13 @@ def process_pending_failures():
                 - Failure Reason: {payment.get('failure_reason')}
                 - Customer Email: {payment.get('customer_email', 'unknown')}
 
-                Your Goal: Recover the revenue while maximizing customer retention.
-
-                Guidelines:
-                1. Always begin by calling get_customer_context to understand the customer's history.
-                2. Evaluate the risk: High amounts (e.g. > ₹50,000), VIP status, or complex technical failures might require human intervention via escalate_to_human.
-                3. For standard recoveries, use create_recovery_link.
-                4. If you determine the customer is a high churn risk based on their history and the failure reason, you may use is_partial=True to offer a 50% discount bargaining link.
-                5. Provide a clear, detailed strategy_reasoning explaining your thought process for auditability.
+                Your Goal: Maximize revenue recovery and customer retention.
+                
+                You have full autonomy over the recovery strategy.
+                - First, ALWAYS call get_customer_context to understand who you are dealing with.
+                - Based on the customer's LTV, failure reason, and risk profile, formulate the best recovery strategy.
+                - You may offer partial links for high churn risk, or escalate if the payment is massive or complex.
+                - Always provide a highly detailed 'strategy_reasoning' to explain your autonomous decision.
                 """
                 
                 chat = ai_client.chats.create(
@@ -207,14 +206,22 @@ def process_pending_failures():
                     for fn in response.function_calls:
                         logger.info(f"🛠️ [Agent] Executing tool: {fn.name}")
                         
-                        if fn.name == 'get_customer_context':
-                            result = get_customer_context(**fn.args)
-                        elif fn.name == 'escalate_to_human':
-                            result = escalate_to_human(**fn.args)
-                        elif fn.name == 'create_recovery_link':
-                            result = create_recovery_link(**fn.args)
-                        else:
-                            result = f"Error: Unknown function {fn.name}"
+                        result = None
+                        try:
+                            if fn.name == 'get_customer_context':
+                                result = get_customer_context(**fn.args)
+                            elif fn.name == 'escalate_to_human':
+                                result = escalate_to_human(**fn.args)
+                            elif fn.name == 'create_recovery_link':
+                                result = create_recovery_link(**fn.args)
+                            else:
+                                result = f"Error: Unknown function {fn.name}"
+                        except ValidationError as ve:
+                            logger.warning(f"⚠️ [Agent] Pydantic Validation Error in {fn.name}: {ve}")
+                            result = f"ValidationError: Your arguments were invalid. Please correct them. Details: {ve}"
+                        except Exception as e:
+                            logger.error(f"⚠️ [Agent] Execution Error in {fn.name}: {e}")
+                            result = f"ExecutionError: {e}"
                             
                         response = chat.send_message(
                             types.Part.from_function_response(
