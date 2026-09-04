@@ -81,7 +81,7 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentId: payment.id,
-          amount: payment.amount,
+          amount: isPartial ? Math.round(payment.amount / 2) : payment.amount,
           currency: payment.currency || 'INR',
           isPartial
         })

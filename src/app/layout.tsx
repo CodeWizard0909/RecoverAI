@@ -22,6 +22,7 @@ export default function RootLayout({
         {/* We keep Material Symbols as a standard link because next/font/google doesn't fully support icon fonts natively */}
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=optional" rel="stylesheet" />
+        <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
       </head>
       <body>{children}</body>
     </html>
