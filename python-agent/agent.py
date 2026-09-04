@@ -54,7 +54,7 @@ def determine_recovery_strategy(failure_reason: str, amount: int) -> dict:
     
     try:
         response = ai_client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-3.6-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -65,6 +65,7 @@ def determine_recovery_strategy(failure_reason: str, amount: int) -> dict:
         raise ValueError("Empty response from Gemini")
     except Exception as e:
         logger.error(f"[Brain] Error calling Gemini: {e}")
+        print(f"[Brain] Error calling Gemini: {e}")
         return {
             "churn_risk_score": 50,
             "partial_payment_offered": False,
@@ -132,17 +133,6 @@ def process_pending_failures():
 def execute_recovery_actions():
     """Finds pending actions and executes them via Razorpay if time rules allow."""
     try:
-        # Enforce stopping rule: No contact between 10 PM and 8 AM IST
-        now = datetime.now(timezone.utc)
-        # Convert to IST (+5:30)
-        ist_time = now + timedelta(hours=5, minutes=30)
-        hours = ist_time.hour
-        
-        # NOTE: For hackathon demo, we temporarily disable the time block so it works live
-        # if hours >= 22 or hours < 8:
-        #     logger.info("[Executor] Paused: Outside allowed contact hours (10 PM - 8 AM IST).")
-        #     return 0
-
         # Fetch pending actions with their payments
         res = supabase.table('recovery_actions').select('*, failed_payments(*)').eq('status', 'pending').limit(10).execute()
         actions = res.data
