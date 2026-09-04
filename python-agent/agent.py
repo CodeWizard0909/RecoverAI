@@ -79,7 +79,7 @@ def escalate_to_human(payment_id: str, amount: int, reason: str, strategy_reason
         supabase.table('recovery_actions').insert({
             'payment_id': args.payment_id,
             'type': 'escalate',
-            'status': 'escalated_to_slack',
+            'status': 'executed',
             'gemini_reasoning': args.strategy_reasoning,
             'executed_at': datetime.now(timezone.utc).isoformat()
         }).execute()
@@ -100,7 +100,8 @@ def create_recovery_link(payment_id: str, amount: int, is_partial: bool, strateg
         res = supabase.table('failed_payments').select('currency, customer_email, customer_phone, razorpay_payment_id').eq('id', args.payment_id).single().execute()
         payment_meta = res.data
         
-        action_id = f"act_{int(datetime.now().timestamp())}"
+        import uuid
+        action_id = str(uuid.uuid4())
         
         link_req = {
             "amount": args.amount,
