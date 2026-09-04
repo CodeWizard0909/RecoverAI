@@ -93,6 +93,14 @@ def process_pending_failures():
         success_count = 0
         for payment in payments:
             try:
+                # Guard: skip if this payment already has recovery actions (avoid duplicates)
+                existing = supabase.table('recovery_actions').select('id', count='exact').eq('payment_id', payment['id']).execute()
+                if existing.count and existing.count > 0:
+                    logger.info(f"[Brain] Payment {payment['id']} already has actions, skipping.")
+                    # Ensure status is updated so it won't be picked up again
+                    supabase.table('failed_payments').update({'status': 'recovery_in_progress'}).eq('id', payment['id']).execute()
+                    continue
+
                 strategy = determine_recovery_strategy(
                     payment.get('failure_reason', 'Unknown error'),
                     payment.get('amount', 0)
@@ -153,6 +161,12 @@ def execute_recovery_actions():
                 continue
                 
             try:
+                # Guard: skip if payment is already recovered — no double execution
+                if payment.get('status') == 'recovered':
+                    logger.info(f"[Executor] Payment {payment['id']} already recovered. Cancelling pending action.")
+                    supabase.table('recovery_actions').update({'status': 'cancelled'}).eq('id', action['id']).execute()
+                    continue
+
                 # Enforce max 3 retries stopping rule
                 count_res = supabase.table('recovery_actions').select('id', count='exact').eq('payment_id', payment['id']).eq('status', 'executed').execute()
                 if count_res.count is not None and count_res.count >= 3:
