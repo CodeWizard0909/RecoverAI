@@ -280,26 +280,64 @@ export default function Dashboard() {
                     {p.recovery_actions && p.recovery_actions.length > 0 && (
                       <div className="mt-2.5 pt-2 flex flex-col space-y-1.5 hidden" id={`row-${p.id}-details`}>
                         {p.recovery_actions.map((action: Record<string, string>) => {
-                          const reasoningParts = action.gemini_reasoning?.split(' | LINK: ') || [action.gemini_reasoning];
-                          const rationale = reasoningParts[0];
-                          const link = reasoningParts[1];
+                          const reasoning = action.gemini_reasoning || '';
+                          
+                          // Parse Churn Risk
+                          const churnRiskMatch = reasoning.match(/\[CHURN_RISK:\s*(\d+)%\]/);
+                          const churnRisk = churnRiskMatch ? parseInt(churnRiskMatch[1], 10) : null;
+                          
+                          // Parse Bargaining
+                          const isBargaining = reasoning.includes('[BARGAINING_ACTIVE]');
+                          
+                          // Extract Links
+                          const linkMatch = reasoning.match(/\| LINK: (https:\/\/[^\s|]+)/);
+                          const link = linkMatch ? linkMatch[1] : null;
+                          
+                          const partialLinkMatch = reasoning.match(/\| PARTIAL_LINK: (https:\/\/[^\s|]+)/);
+                          const partialLink = partialLinkMatch ? partialLinkMatch[1] : null;
+                          
+                          // Clean the rationale text for display
+                          let rationale = reasoning
+                            .replace(/\[CHURN_RISK: \d+%\]/g, '')
+                            .replace(/\[BARGAINING_ACTIVE\]/g, '')
+                            .replace(/\| LINK: https:\/\/[^\s|]+/g, '')
+                            .replace(/\| PARTIAL_LINK: https:\/\/[^\s|]+/g, '')
+                            .trim();
 
                           return (
                           <div key={action.id} className="pb-2 border-b border-surface-container last:border-0">
-                            <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-                              <span className="font-semibold text-on-surface">AI Rationale ({action.type}): </span> 
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[11px] font-medium tracking-wide uppercase text-on-surface-variant/80">AI Strategy:</span>
+                              <span className="px-2 py-0.5 rounded-sm bg-primary/10 text-primary text-[10px] font-semibold tracking-wider font-mono">
+                                {action.type}
+                              </span>
+                              {churnRisk !== null && (
+                                <span className={`px-2 py-0.5 rounded-sm text-[10px] font-semibold tracking-wider font-mono ${churnRisk > 70 ? 'bg-red-500/20 text-red-500' : 'bg-orange-500/20 text-orange-500'}`}>
+                                  {churnRisk > 70 ? '🚨 HIGH CHURN RISK: ' : 'CHURN RISK: '} {churnRisk}%
+                                </span>
+                              )}
+                              {isBargaining && (
+                                <span className="px-2 py-0.5 rounded-sm bg-green-500/20 text-green-500 text-[10px] font-semibold tracking-wider font-mono">
+                                  🤝 BARGAINING OFFERED
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[13px] text-on-surface-variant/90 leading-relaxed pl-2 border-l-2 border-primary/20">
                               {rationale}
-                            </p>
-                            {link && (
-                              <div className="mt-2 mb-1">
-                                <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-3 py-1.5 bg-secondary text-on-secondary rounded text-xs font-semibold shadow-sm hover:bg-secondary-container transition-all">
-                                  <span className="material-symbols-outlined text-[14px]">link</span>
-                                  Open Payment Link
+                            </div>
+                            <div className="flex gap-2 mt-2">
+                              {link && (
+                                <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#4B8EF5] hover:bg-[#3b7be0] text-white text-[12px] font-medium rounded transition-colors shadow-sm w-fit">
+                                  <span>Pay Full Amount</span>
+                                  <svg className="w-3.5 h-3.5 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                                 </a>
-                              </div>
-                            )}
-                            <div className="flex items-center justify-between text-outline font-label-code text-[10px] pt-1 mt-1">
-                              <span>Status: {action.status}</span>
+                              )}
+                              {partialLink && (
+                                <a href={partialLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#10B981] hover:bg-[#059669] text-white text-[12px] font-medium rounded transition-colors shadow-sm w-fit">
+                                  <span>Pay 50% Upfront</span>
+                                  <svg className="w-3.5 h-3.5 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                </a>
+                              )}
                             </div>
                           </div>
                           );

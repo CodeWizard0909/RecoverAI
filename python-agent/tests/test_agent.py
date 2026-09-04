@@ -11,11 +11,13 @@ from agent import determine_recovery_strategy
 def test_determine_recovery_strategy(mock_generate):
     # Mock Gemini response
     mock_response = MagicMock()
-    mock_response.text = '{"action": "retry_upi", "delay_hours": 0, "reason": "Network error"}'
+    mock_response.text = '{"churn_risk_score": 85, "partial_payment_offered": true, "action": "retry_upi", "delay_hours": 0, "reason": "Network error"}'
     mock_generate.return_value = mock_response
 
     result = determine_recovery_strategy("customer network drop", 149900)
     
     assert result['action'] == 'retry_upi'
     assert result['delay_hours'] == 0
+    assert result['churn_risk_score'] == 85
+    assert result['partial_payment_offered'] is True
     assert result['reason'] == 'Network error'

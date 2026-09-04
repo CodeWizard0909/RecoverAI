@@ -32,18 +32,23 @@ def determine_recovery_strategy(failure_reason: str, amount: int) -> dict:
     Failure Reason: "{failure_reason}"
     Amount: ₹{amount / 100}
 
-    Decide the BEST automated recovery action.
-    Rules:
-    - If it's a network/bank timeout drop, retry immediately -> 'retry_upi'
-    - If card expired or insufficient funds -> 'send_link' (to use a new method)
-    - If it's a high amount (>10,000) and complex -> 'escalate' (to human)
-    - Default to 'send_link' if unsure.
+    Here is the simulated customer metadata:
+    - Lifetime Value (LTV): ₹1,20,000
+    - Previous Failures this year: 2
+
+    Task 1: Calculate a Churn Risk Score (0-100) based on the failure reason and customer history. High risk if they've failed multiple times.
+    Task 2: Decide the automated recovery action.
+    - If network error -> 'retry_upi'
+    - If card expired/insufficient funds -> 'send_link'
+    Task 3: Decide if we should offer a 'partial_payment' (bargaining) to save the transaction. If Churn Risk > 70% and error is funds-related, set this to true.
 
     Return EXACTLY a JSON object with this schema:
     {{
+        "churn_risk_score": 85,
+        "partial_payment_offered": true,
         "action": "retry_upi" | "send_link" | "schedule_retry" | "escalate",
         "delay_hours": number (0 for immediate),
-        "reason": "short explanation of why you chose this action"
+        "reason": "short explanation of why you chose this action and risk score"
     }}
     """
     
@@ -60,8 +65,9 @@ def determine_recovery_strategy(failure_reason: str, amount: int) -> dict:
         raise ValueError("Empty response from Gemini")
     except Exception as e:
         logger.error(f"[Brain] Error calling Gemini: {e}")
-        # Safe fallback
         return {
+            "churn_risk_score": 50,
+            "partial_payment_offered": False,
             "action": "send_link",
             "delay_hours": 0,
             "reason": "Fallback to manual link due to AI decision failure."
@@ -91,12 +97,19 @@ def process_pending_failures():
                     dt = datetime.now(timezone.utc) + timedelta(hours=strategy['delay_hours'])
                     scheduled_for = dt.isoformat()
                     
+                # Format the reasoning with tags for the UI to parse
+                tags = f"[CHURN_RISK: {strategy.get('churn_risk_score', 0)}%]"
+                if strategy.get('partial_payment_offered'):
+                    tags += " [BARGAINING_ACTIVE]"
+                
+                final_reasoning = f"{tags} {strategy.get('reason', '')}"
+
                 # Insert recovery action
                 action_data = {
                     'payment_id': payment['id'],
                     'type': strategy['action'],
                     'status': 'pending',
-                    'gemini_reasoning': strategy['reason']
+                    'gemini_reasoning': final_reasoning
                 }
                 if scheduled_for:
                     action_data['scheduled_for'] = scheduled_for
@@ -154,7 +167,10 @@ def execute_recovery_actions():
                     }).eq('id', action['id']).execute()
                     continue
 
-                # Generate Razorpay Link
+                # Check if bargaining was activated by the Brain
+                is_bargaining = "[BARGAINING_ACTIVE]" in action.get('gemini_reasoning', '')
+                
+                # Generate Razorpay Link (Full Amount)
                 link_req = {
                     "amount": payment['amount'],
                     "currency": payment['currency'],
@@ -176,9 +192,15 @@ def execute_recovery_actions():
                 }
                 
                 plink = rzp_client.payment_link.create(link_req)
-                
-                # Append link to UI rationale
                 new_reasoning = f"{action.get('gemini_reasoning', '')} | LINK: {plink.get('short_url', '')}"
+
+                if is_bargaining:
+                    # Generate a 50% partial payment link
+                    partial_req = dict(link_req)
+                    partial_req["amount"] = int(payment['amount'] / 2)
+                    partial_req["description"] = f"Partial 50% Recovery Plan for {payment.get('razorpay_payment_id')}"
+                    partial_plink = rzp_client.payment_link.create(partial_req)
+                    new_reasoning += f" | PARTIAL_LINK: {partial_plink.get('short_url', '')}"
                 
                 supabase.table('recovery_actions').update({
                     'status': 'executed',
