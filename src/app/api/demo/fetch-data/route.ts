@@ -19,7 +19,8 @@ export async function GET() {
 
     const { count: actionsCount, error: countErr } = await supabaseAdmin
       .from('recovery_actions')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'executed');
     
     if (countErr) throw countErr;
 

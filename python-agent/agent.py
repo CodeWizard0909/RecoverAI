@@ -229,6 +229,12 @@ def execute_recovery_actions():
                     'executed_at': datetime.now(timezone.utc).isoformat(),
                     'gemini_reasoning': new_reasoning
                 }).eq('id', action['id']).execute()
+
+                # ✅ Mark the parent payment as recovered so the dashboard stats update
+                supabase.table('failed_payments').update({
+                    'status': 'recovered'
+                }).eq('id', payment['id']).execute()
+                logger.info(f"[Executor] Payment {payment['id']} marked as recovered.")
                 
                 success_count += 1
             except Exception as e:
