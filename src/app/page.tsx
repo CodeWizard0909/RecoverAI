@@ -465,12 +465,22 @@ export default function Dashboard() {
                                 </div>
                                 
                                 <details className="mt-2 group">
-                                  <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wide text-white/50 hover:text-white/80 transition-colors list-none flex items-center select-none">
-                                    <span className="mr-2 opacity-50 group-open:rotate-90 transition-transform">▶</span>
-                                    View Agent Details
+                                  <summary className="w-full text-left px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 text-[11px] font-bold uppercase tracking-wide rounded transition-all flex items-center justify-between cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
+                                    <span>View Details</span>
+                                    <span className="ml-2">
+                                      <svg 
+                                        className="w-4 h-4 text-white/50 transition-transform duration-200 group-open:rotate-180" 
+                                        viewBox="0 0 24 24" 
+                                        fill="none" 
+                                        stroke="currentColor" 
+                                        strokeWidth="2"
+                                      >
+                                        <path d="M6 9l6 6 6-6" />
+                                      </svg>
+                                    </span>
                                   </summary>
                                   
-                                  <div className="mt-3 pl-4 border-l-2 border-white/10 space-y-3 pb-1">
+                                  <div className="mt-3 pl-4 border-l-2 border-white/10 space-y-3 pb-1 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
                                     <p className="text-[13px] text-white/70 leading-relaxed italic">
                                       "{rationale}"
                                     </p>
@@ -508,6 +518,12 @@ export default function Dashboard() {
                                           Dispatch Voice AI
                                         </button>
                                       )}
+                                    </div>
+                                    
+                                    {/* Full Reasoning (for transparency) */}
+                                    <div className="mt-4 pt-3 border-t border-white/5">
+                                      <p className="text-[10px] text-white/40 italic mb-1 font-semibold uppercase tracking-wider">Full Agent Trace:</p>
+                                      <p className="text-[10px] text-white/50 break-words whitespace-pre-line font-mono">{reasoning}</p>
                                     </div>
                                   </div>
                                 </details>
