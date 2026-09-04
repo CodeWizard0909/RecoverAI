@@ -14,6 +14,14 @@ import {
   Wallet
 } from "lucide-react";
 
+// Razorpay browser SDK type
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Razorpay: new (options: Record<string, any>) => { open: () => void };
+  }
+}
+
 interface PaymentRow {
   id: string;
   razorpay_payment_id: string;
@@ -32,6 +40,7 @@ export default function Dashboard() {
   const [triggering, setTriggering] = useState(false);
   const [injecting, setInjecting] = useState(false);
   const [dispatchingVoice, setDispatchingVoice] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
 
   // Stats
   const [totalAtRisk, setTotalAtRisk] = useState(0);
@@ -40,6 +49,70 @@ export default function Dashboard() {
 
   // Chart Data (Mock trend + live data)
   const [chartData, setChartData] = useState<{time: string, risk: number, recovered: number}[]>([]);
+
+  // Inject Razorpay SDK script once on mount
+  useEffect(() => {
+    if (!document.getElementById('razorpay-sdk')) {
+      const script = document.createElement('script');
+      script.id = 'razorpay-sdk';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  const openRazorpayModal = async (payment: PaymentRow, isPartial = false) => {
+    setPayingId(payment.id);
+    try {
+      const res = await fetch('/api/payment/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: isPartial ? Math.floor(payment.amount / 2) : payment.amount,
+          currency: payment.currency || 'INR',
+          paymentId: payment.razorpay_payment_id,
+          email: payment.customer_email,
+          phone: payment.customer_phone,
+        })
+      });
+      const order = await res.json();
+      if (!order.orderId) throw new Error('Order creation failed');
+
+      const rzp = new window.Razorpay({
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'RecoverAI',
+        description: `Recovery for ${payment.razorpay_payment_id}`,
+        order_id: order.orderId,
+        prefill: { email: order.email, contact: order.phone },
+        theme: { color: '#10b981' },
+        handler: async () => {
+          // Payment successful — immediately mark as recovered in DB
+          await fetch('/api/webhooks/razorpay', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event: 'payment_link.paid',
+              payload: {
+                payment_link: {
+                  entity: {
+                    notes: { original_payment_id: payment.razorpay_payment_id }
+                  }
+                }
+              }
+            })
+          });
+          await fetchData();
+        },
+        modal: { ondismiss: () => setPayingId(null) }
+      });
+      rzp.open();
+    } catch (e) {
+      console.error('Razorpay modal error:', e);
+      setPayingId(null);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -368,14 +441,24 @@ export default function Dashboard() {
                                 
                                 <div className="flex flex-wrap gap-2 mt-auto">
                                   {link && (
-                                    <a href={link} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => openRazorpayModal(p, false)}
+                                      disabled={payingId === p.id}
+                                      className="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                    >
+                                      {payingId === p.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
                                       Pay Full
-                                    </a>
+                                    </button>
                                   )}
                                   {partialLink && (
-                                    <a href={partialLink} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => openRazorpayModal(p, true)}
+                                      disabled={payingId === p.id}
+                                      className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold uppercase tracking-wide rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                    >
+                                      {payingId === p.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Wallet className="w-3 h-3" />}
                                       Pay 50% Upfront
-                                    </a>
+                                    </button>
                                   )}
                                   
                                   {/* Feature 3: Voice AI Dispatch Button (Only for High Risk) */}
