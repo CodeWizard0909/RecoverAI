@@ -394,7 +394,8 @@ export default function Dashboard() {
                         </div>
                       ) : (
                         <div className="flex flex-col gap-3">
-                          {p.recovery_actions.map((action: Record<string, string>) => {
+                          {/* Only show the latest (most recent) action — no duplicates */}
+                          {[p.recovery_actions[p.recovery_actions.length - 1]].map((action: Record<string, string>) => {
                             const reasoning = action.gemini_reasoning || '';
                             const churnRiskMatch = reasoning.match(/\[CHURN_RISK:\s*(\d+)%\]/);
                             const churnRisk = churnRiskMatch ? parseInt(churnRiskMatch[1], 10) : null;
@@ -440,7 +441,7 @@ export default function Dashboard() {
                                 </p>
                                 
                                 <div className="flex flex-wrap gap-2 mt-auto">
-                                  {link && (
+                                  {!isRecovered && link && (
                                     <button
                                       onClick={() => openRazorpayModal(p, false)}
                                       disabled={payingId === p.id}
@@ -450,7 +451,7 @@ export default function Dashboard() {
                                       Pay Full
                                     </button>
                                   )}
-                                  {partialLink && (
+                                  {!isRecovered && partialLink && (
                                     <button
                                       onClick={() => openRazorpayModal(p, true)}
                                       disabled={payingId === p.id}
@@ -462,7 +463,7 @@ export default function Dashboard() {
                                   )}
                                   
                                   {/* Feature 3: Voice AI Dispatch Button (Only for High Risk) */}
-                                  {churnRisk !== null && churnRisk >= 70 && (
+                                  {!isRecovered && churnRisk !== null && churnRisk >= 70 && (
                                     <button 
                                       onClick={() => handleVoiceDispatch(p.id)}
                                       disabled={dispatchingVoice === p.id}
