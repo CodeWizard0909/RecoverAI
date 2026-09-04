@@ -18,7 +18,10 @@ import {
 declare global {
   interface Window {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Razorpay: new (options: Record<string, any>) => { open: () => void };
+    Razorpay: new (options: Record<string, any>) => {
+      open: () => void;
+      on: (event: string, callback: (...args: any[]) => void) => void;
+    };
   }
 }
 
@@ -110,7 +113,13 @@ export default function Dashboard() {
       };
 
       const rzp = new window.Razorpay(options);
-      
+
+      // ADD THIS BLOCK:
+      rzp.on('modal.close', function () {
+        // This fires whenever the modal is closed (by X, escape, or payment completion/cancellation)
+        setPayingId(null);
+      });
+
       rzp.on('payment.failed', function (response: any) {
         console.error("Payment failed", response.error);
         alert(response.error.description);
@@ -123,33 +132,22 @@ export default function Dashboard() {
     }
   };
 
+  const USE_REAL_DATA = true; // Set false to use mock data
+
   const fetchData = async () => {
     try {
-      const response = await fetch(`/api/demo/fetch-data?t=${Date.now()}`);
+      const endpoint = USE_REAL_DATA ? '/api/payments' : `/api/demo/fetch-data?t=${Date.now()}`;
+      const response = await fetch(endpoint);
+      
       if (response.ok) {
         const data = await response.json();
-        setPayments(data.payments);
         
-        let risk = 0;
-        let rec = 0;
-        data.payments.forEach((p: PaymentRow) => {
-          if (p.status !== 'recovered') risk += p.amount;
-          if (p.status === 'recovered') rec += p.amount;
-        });
-        setTotalAtRisk(risk);
-        setRecoveredAmount(rec);
+        // The real endpoint already calculates everything cleanly!
+        setPayments(data.payments);
+        setTotalAtRisk(data.totalAtRisk);
+        setRecoveredAmount(data.recoveredAmount);
         setActionsTaken(data.actionsCount);
-
-        // Generate synthetic chart data leading up to current totals
-        const newChartData = [];
-        for (let i = 6; i >= 0; i--) {
-          newChartData.push({
-            time: `${i}h ago`,
-            risk: Math.max(0, risk - (i * 15000)),
-            recovered: Math.max(0, rec - (i * 8000)),
-          });
-        }
-        setChartData(newChartData);
+        setChartData(data.chartData);
       }
     } catch (e) {
       console.error(e);

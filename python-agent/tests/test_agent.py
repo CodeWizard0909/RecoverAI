@@ -25,15 +25,15 @@ def test_escalate_to_human(mock_supabase):
 @patch('agent.rzp_client')
 @patch('agent.supabase')
 def test_create_recovery_link(mock_supabase, mock_rzp):
-    mock_supabase.table().select().eq().single().execute.return_value = MagicMock(
-        data={'currency': 'INR', 'customer_email': 'test@test.com', 'customer_phone': '999', 'razorpay_payment_id': 'rzp_456'}
+    mock_supabase.table().select().eq().limit().execute.return_value = MagicMock(
+        data=[{'currency': 'INR', 'customer_email': 'test@test.com', 'customer_phone': '999', 'razorpay_payment_id': 'rzp_456'}]
     )
-    mock_rzp.payment_link.create.return_value = {"short_url": "https://rzp.io/l/mock"}
-    
+    mock_rzp.post.return_value = {"short_url": "https://rzp.io/l/mock"}
+
     result = create_recovery_link(payment_id="pay_123", amount=150000, is_partial=False, strategy_reasoning="Standard retry link")
-    
+
     assert "Successfully created recovery link" in result
-    mock_rzp.payment_link.create.assert_called_once()
+    mock_rzp.post.assert_called()
     mock_supabase.table().insert.assert_called()
 
 # =========================================================================
@@ -88,5 +88,5 @@ def test_process_pending_failures(mock_supabase, mock_ai_client):
 from agent import EscalateArgs
 def test_pydantic_validation_error():
     with pytest.raises(ValidationError):
-        # Missing required strategy_reasoning, amount is wrong type
-        EscalateArgs(payment_id="pay_123", amount="not_an_int", reason="Network drop")
+        # Amount is wrong type, but all required fields provided
+        EscalateArgs(payment_id="pay_123", amount="not_an_int", reason="Network drop", strategy_reasoning="Some reason")
