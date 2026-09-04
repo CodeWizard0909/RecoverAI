@@ -180,7 +180,7 @@ def create_recovery_link(payment_id: str, amount: int, is_partial: bool, strateg
             }
         }
         
-        plink = rzp_client.payment_link.create(link_req)
+        plink = rzp_client.payment_link.create(link_req)  # type: ignore
         # Extract short_url safely from response (could be dict or string)
         short_url = ''
         if isinstance(plink, dict):
@@ -191,7 +191,7 @@ def create_recovery_link(payment_id: str, amount: int, is_partial: bool, strateg
             partial_req = dict(link_req)
             partial_req["amount"] = int(args.amount / 2)
             partial_req["description"] = f"Partial 50% Recovery Plan for {payment_meta.get('razorpay_payment_id')}"
-            partial_plink = rzp_client.payment_link.create(partial_req)
+            partial_plink = rzp_client.payment_link.create(partial_req)  # type: ignore
             # Extract short_url safely from response (could be dict or string)
             partial_short_url = ''
             if isinstance(partial_plink, dict):
