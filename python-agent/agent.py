@@ -26,31 +26,48 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 ai_client = genai.Client(api_key=GEMINI_API_KEY)
 rzp_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
+from pydantic import BaseModel, ValidationError, Field
+
+# =========================================================================
+# TOOL ARGUMENT VALIDATION (PYDANTIC)
+# =========================================================================
+
+class EscalateArgs(BaseModel):
+    payment_id: str = Field(..., description="The unique ID of the failed payment")
+    amount: int = Field(..., description="The payment amount in the smallest currency unit (paise)")
+    reason: str = Field(..., description="The technical reason for the failure")
+    strategy_reasoning: str = Field(..., description="Detailed explanation of why this payment requires human escalation")
+
+class CreateLinkArgs(BaseModel):
+    payment_id: str = Field(..., description="The unique ID of the failed payment")
+    amount: int = Field(..., description="The payment amount in the smallest currency unit (paise)")
+    is_partial: bool = Field(..., description="Set to true to offer a 50% discount/partial payment link for bargaining")
+    strategy_reasoning: str = Field(..., description="Detailed explanation of why a link (and potential partial offer) was chosen")
+
 # =========================================================================
 # AGENT TOOLS (Callable by Gemini)
 # =========================================================================
 
 def get_customer_context(email: str) -> dict:
-    """Queries the CRM/Database for customer history like LTV and prior failures."""
-    # Mocking CRM lookup for buildathon
+    """Retrieves customer history (LTV, prior failures, VIP status) from the CRM."""
     return {
         "lifetime_value": 120000,
         "previous_failures_this_year": 2,
         "is_vip": True if "vip" in email.lower() else False
     }
 
-def escalate_payment(payment_id: str, reason: str, churn_risk: int) -> str:
-    """Escalates a failed payment to a human operator via Slack."""
+def escalate_to_human(payment_id: str, amount: int, reason: str, strategy_reasoning: str) -> str:
+    """Escalates a high-risk or VIP failed payment to a human operator via Slack."""
     try:
-        res = supabase.table('failed_payments').select('*').eq('id', payment_id).single().execute()
-        payment = res.data
+        # Validate inputs via Pydantic
+        args = EscalateArgs(payment_id=payment_id, amount=amount, reason=reason, strategy_reasoning=strategy_reasoning)
         
         slack_payload = {
-            "text": f"🚨 VIP Payment Failed: ₹{payment['amount']/100}",
+            "text": f"🚨 VIP/High-Risk Payment Failed: ₹{args.amount/100}",
             "blocks": [
                 {
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": f"*VIP Payment Failed*\n*Amount:* ₹{payment['amount']/100}\n*AI Reasoning:* {reason}"}
+                    "text": {"type": "mrkdwn", "text": f"*Human Escalation Required*\n*Amount:* ₹{args.amount/100}\n*AI Strategy Reasoning:* {args.strategy_reasoning}\n*Technical Error:* {args.reason}"}
                 }
             ]
         }
@@ -58,83 +75,81 @@ def escalate_payment(payment_id: str, reason: str, churn_risk: int) -> str:
         print("🚀 [SLACK WEBHOOK FIRED] Human-in-the-loop requested!")
         print(json.dumps(slack_payload, indent=2))
         print("="*50 + "\n")
-
-        action_reasoning = f"[CHURN_RISK: {churn_risk}%] {reason}"
         
         supabase.table('recovery_actions').insert({
-            'payment_id': payment_id,
+            'payment_id': args.payment_id,
             'type': 'escalate',
             'status': 'escalated_to_slack',
-            'gemini_reasoning': action_reasoning,
+            'gemini_reasoning': args.strategy_reasoning,
             'executed_at': datetime.now(timezone.utc).isoformat()
         }).execute()
         
-        supabase.table('failed_payments').update({'status': 'recovery_in_progress'}).eq('id', payment_id).execute()
-        
-        return "Successfully escalated to Slack."
+        supabase.table('failed_payments').update({'status': 'recovery_in_progress'}).eq('id', args.payment_id).execute()
+        return "Successfully escalated to human operator."
+    except ValidationError as ve:
+        return f"Input Validation Error: {ve}"
     except Exception as e:
         return f"Error escalating: {str(e)}"
 
-def generate_recovery_link(payment_id: str, offer_partial: bool, reason: str, churn_risk: int) -> str:
-    """Generates a Razorpay payment link for the customer to retry their payment."""
+def create_recovery_link(payment_id: str, amount: int, is_partial: bool, strategy_reasoning: str) -> str:
+    """Generates a Razorpay payment link to send to the customer. Use is_partial=True to offer a 50% discount for high flight-risk users."""
     try:
-        res = supabase.table('failed_payments').select('*').eq('id', payment_id).single().execute()
-        payment = res.data
+        # Validate inputs via Pydantic
+        args = CreateLinkArgs(payment_id=payment_id, amount=amount, is_partial=is_partial, strategy_reasoning=strategy_reasoning)
         
-        action_id = f"act_{int(datetime.now().timestamp())}" # Generate deterministic ID for notes
+        res = supabase.table('failed_payments').select('currency, customer_email, customer_phone, razorpay_payment_id').eq('id', args.payment_id).single().execute()
+        payment_meta = res.data
+        
+        action_id = f"act_{int(datetime.now().timestamp())}"
         
         link_req = {
-            "amount": payment['amount'],
-            "currency": payment['currency'] or 'INR',
+            "amount": args.amount,
+            "currency": payment_meta.get('currency') or 'INR',
             "accept_partial": False,
-            "description": f"Recovery for failed transaction {payment.get('razorpay_payment_id')}",
+            "description": f"Recovery for failed transaction {payment_meta.get('razorpay_payment_id')}",
             "customer": {
-                "email": payment.get('customer_email') or "demo@example.com",
-                "contact": payment.get('customer_phone') or "+919876543210"
+                "email": payment_meta.get('customer_email') or "demo@example.com",
+                "contact": payment_meta.get('customer_phone') or "+919876543210"
             },
             "notify": {"sms": False, "email": False},
             "notes": {
-                "original_payment_id": payment.get('razorpay_payment_id'),
+                "original_payment_id": payment_meta.get('razorpay_payment_id'),
                 "recovery_action_id": action_id
             }
         }
         
         plink = rzp_client.payment_link.create(link_req)
+        final_reasoning = f"{args.strategy_reasoning} | LINK: {plink.get('short_url', '')}"
         
-        tags = f"[CHURN_RISK: {churn_risk}%]"
-        if offer_partial:
-            tags += " [BARGAINING_ACTIVE]"
-            
-        reasoning = f"{tags} {reason} | LINK: {plink.get('short_url', '')}"
-        
-        if offer_partial:
+        if args.is_partial:
             partial_req = dict(link_req)
-            partial_req["amount"] = int(payment['amount'] / 2)
-            partial_req["description"] = f"Partial 50% Recovery Plan for {payment.get('razorpay_payment_id')}"
+            partial_req["amount"] = int(args.amount / 2)
+            partial_req["description"] = f"Partial 50% Recovery Plan for {payment_meta.get('razorpay_payment_id')}"
             partial_plink = rzp_client.payment_link.create(partial_req)
-            reasoning += f" | PARTIAL_LINK: {partial_plink.get('short_url', '')}"
+            final_reasoning += f" | PARTIAL_LINK: {partial_plink.get('short_url', '')}"
             
         supabase.table('recovery_actions').insert({
             'id': action_id,
-            'payment_id': payment_id,
-            'type': 'send_link' if offer_partial else 'retry_upi',
+            'payment_id': args.payment_id,
+            'type': 'send_link' if args.is_partial else 'retry_upi',
             'status': 'executed',
-            'gemini_reasoning': reasoning,
+            'gemini_reasoning': final_reasoning,
             'executed_at': datetime.now(timezone.utc).isoformat()
         }).execute()
         
-        supabase.table('failed_payments').update({'status': 'recovery_in_progress'}).eq('id', payment_id).execute()
-        
-        return "Successfully generated recovery link."
+        supabase.table('failed_payments').update({'status': 'recovery_in_progress'}).eq('id', args.payment_id).execute()
+        return "Successfully created recovery link."
+    except ValidationError as ve:
+        return f"Input Validation Error: {ve}"
     except Exception as e:
-        return f"Error generating link: {str(e)}"
+        return f"Error creating link: {str(e)}"
 
 
 # =========================================================================
 # AGENT ORCHESTRATOR
 # =========================================================================
 
-tools = [get_customer_context, escalate_payment, generate_recovery_link]
+tools = [get_customer_context, escalate_to_human, create_recovery_link]
 
 def process_pending_failures():
     """Fetches new failed payments and runs the autonomous agent loop."""
@@ -148,27 +163,30 @@ def process_pending_failures():
         success_count = 0
         for payment in payments:
             try:
-                # Guard against duplicates
                 existing = supabase.table('recovery_actions').select('id', count='exact').eq('payment_id', payment['id']).execute()
                 if existing.count and existing.count > 0:
                     supabase.table('failed_payments').update({'status': 'recovery_in_progress'}).eq('id', payment['id']).execute()
                     continue
 
-                logger.info(f"🤖 [Agent] Starting recovery for payment {payment['id']}")
+                logger.info(f"🤖 [Agent] Starting reasoning loop for payment {payment['id']}")
                 
                 system_instruction = f"""
-                You are an autonomous Revenue Recovery Agent.
-                A payment failed for ID: {payment['id']}
-                Amount: ₹{payment.get('amount', 0) / 100}
-                Reason: {payment.get('failure_reason')}
-                Email: {payment.get('customer_email', 'unknown')}
+                You are an autonomous Revenue Recovery Agent tasked with recovering a failed payment.
 
-                Your Goal: Recover the revenue.
-                Rules:
-                1. Always call get_customer_context first to learn about the user.
-                2. If amount > ₹50,000 OR they are a VIP, call escalate_payment.
-                3. Otherwise, call generate_recovery_link.
-                4. If churn risk > 70%, pass offer_partial=True to generate_recovery_link.
+                Payment Context:
+                - Payment ID: {payment['id']}
+                - Amount: ₹{payment.get('amount', 0) / 100} (Pass {payment.get('amount', 0)} in tools)
+                - Failure Reason: {payment.get('failure_reason')}
+                - Customer Email: {payment.get('customer_email', 'unknown')}
+
+                Your Goal: Recover the revenue while maximizing customer retention.
+
+                Guidelines:
+                1. Always begin by calling get_customer_context to understand the customer's history.
+                2. Evaluate the risk: High amounts (e.g. > ₹50,000), VIP status, or complex technical failures might require human intervention via escalate_to_human.
+                3. For standard recoveries, use create_recovery_link.
+                4. If you determine the customer is a high churn risk based on their history and the failure reason, you may use is_partial=True to offer a 50% discount bargaining link.
+                5. Provide a clear, detailed strategy_reasoning explaining your thought process for auditability.
                 """
                 
                 chat = ai_client.chats.create(
@@ -179,28 +197,25 @@ def process_pending_failures():
                     )
                 )
                 
-                # Turn 1: Give context
                 response = chat.send_message(system_instruction)
                 
-                # Simple loop to execute tool calls requested by the model
                 max_turns = 3
                 for _ in range(max_turns):
                     if not response.function_calls:
-                        break # Done
+                        break
                         
                     for fn in response.function_calls:
                         logger.info(f"🛠️ [Agent] Executing tool: {fn.name}")
                         
                         if fn.name == 'get_customer_context':
                             result = get_customer_context(**fn.args)
-                        elif fn.name == 'escalate_payment':
-                            result = escalate_payment(**fn.args)
-                        elif fn.name == 'generate_recovery_link':
-                            result = generate_recovery_link(**fn.args)
+                        elif fn.name == 'escalate_to_human':
+                            result = escalate_to_human(**fn.args)
+                        elif fn.name == 'create_recovery_link':
+                            result = create_recovery_link(**fn.args)
                         else:
                             result = f"Error: Unknown function {fn.name}"
                             
-                        # Send result back to model
                         response = chat.send_message(
                             types.Part.from_function_response(
                                 name=fn.name,
@@ -217,6 +232,5 @@ def process_pending_failures():
         logger.error(f"[Brain] Database fetch error: {e}")
         return 0
 
-# (Removed execute_recovery_actions because the Agent executes immediately via Tools)
 def execute_recovery_actions():
     return 0
