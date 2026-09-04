@@ -266,8 +266,8 @@ export default function Dashboard() {
           <div className="grid grid-cols-12 gap-4 p-4 border-b border-white/5 bg-white/[0.02] text-xs font-semibold text-white/40 uppercase tracking-widest">
             <div className="col-span-3">Customer & Amount</div>
             <div className="col-span-3">Failure Reason</div>
-            <div className="col-span-1">Status</div>
-            <div className="col-span-5">AI Agent Strategy (Gemini)</div>
+            <div className="col-span-2">Status</div>
+            <div className="col-span-4">AI Agent Strategy (Gemini)</div>
           </div>
           
           <div className="divide-y divide-white/5">
@@ -303,8 +303,8 @@ export default function Dashboard() {
                       </span>
                     </div>
                     
-                    <div className="col-span-1">
-                      <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase border ${
+                    <div className="col-span-2">
+                      <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase border break-words text-center ${
                         isRecovered 
                           ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
                           : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
@@ -313,7 +313,7 @@ export default function Dashboard() {
                       </span>
                     </div>
                     
-                    <div className="col-span-5">
+                    <div className="col-span-4">
                       {!p.recovery_actions || p.recovery_actions.length === 0 ? (
                         <div className="flex items-center gap-2 text-white/30 text-sm">
                           <div className="w-2 h-2 rounded-full bg-white/20 animate-pulse" />
@@ -339,7 +339,7 @@ export default function Dashboard() {
                               .trim();
 
                             return (
-                              <div key={action.id} className="p-3 rounded-xl bg-black/40 border border-white/5 relative overflow-hidden">
+                              <div key={action.id} className="pl-5 py-3 pr-3 rounded-xl bg-black/40 border border-white/5 relative overflow-hidden">
                                 {action.status === 'executed' && (
                                   <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,1)]" />
                                 )}

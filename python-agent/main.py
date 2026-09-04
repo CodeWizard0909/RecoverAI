@@ -8,7 +8,16 @@ from apscheduler.triggers.interval import IntervalTrigger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-# Import after configuring logging to ensure module loggers inherit
+import sys
+import os
+from pathlib import Path
+
+# Ensure the python-agent directory is in sys.path so 'import agent' works from anywhere
+current_dir = Path(__file__).resolve().parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
+# Import after configuring logging and paths
 import agent
 
 scheduler = BackgroundScheduler()

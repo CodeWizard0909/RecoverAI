@@ -1,14 +1,19 @@
 import os
+import sys
 import json
 import logging
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from supabase import create_client, Client
 from google import genai
 from google.genai import types
 import razorpay
 from dotenv import load_dotenv
 
-load_dotenv('../.env.local')
+# Dynamically resolve paths so it works no matter where the script is run from
+current_dir = Path(__file__).resolve().parent
+root_dir = current_dir.parent
+load_dotenv(root_dir / '.env.local')
 
 logger = logging.getLogger(__name__)
 

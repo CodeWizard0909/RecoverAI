@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "agent": "cd python-agent && .\\venv\\Scripts\\activate && uvicorn main:app --reload --port 8000"
   },
   "dependencies": {
     "@google/genai": "^2.21.0",
