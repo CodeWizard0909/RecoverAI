@@ -171,44 +171,44 @@ export default function Dashboard() {
             className="col-span-1 flex flex-col gap-4"
           >
             {/* Bento Box 1: Revenue at Risk */}
-            <motion.div variants={itemVariants} className="glass-panel p-5 rounded-3xl relative overflow-hidden group flex flex-col justify-between min-h-[160px]">
-              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                <AlertCircle className="w-20 h-20 text-rose-500" />
+            <motion.div variants={itemVariants} className="glass-panel p-6 rounded-3xl relative overflow-hidden group flex flex-col justify-between min-h-[180px]">
+              <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <AlertCircle className="w-32 h-32 text-rose-500" />
               </div>
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start relative z-10">
                 <p className="text-xs font-semibold text-white/50 tracking-widest uppercase">Revenue at Risk</p>
-                <div className="text-xs font-medium text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">Action Required</div>
+                <div className="text-[10px] font-bold tracking-wider text-rose-400 bg-rose-500/10 px-2 py-1 rounded-md border border-rose-500/20 uppercase">Action Required</div>
               </div>
-              <div>
-                <h2 className="text-3xl font-light tracking-tight mt-2">{formatCurrency(totalAtRisk)}</h2>
-                <div className="h-10 mt-2 w-full opacity-50">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <Area type="monotone" dataKey="risk" stroke="#f43f5e" strokeWidth={1.5} fillOpacity={0.2} fill="#f43f5e" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="relative z-10 mt-6">
+                <h2 className="text-4xl font-light tracking-tight">{formatCurrency(totalAtRisk)}</h2>
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-16 w-full opacity-40 z-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <Area type="monotone" dataKey="risk" stroke="#f43f5e" strokeWidth={2} fillOpacity={0.15} fill="#f43f5e" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </motion.div>
 
             {/* Bento Box 2: Recovered */}
-            <motion.div variants={itemVariants} className="glass-panel p-5 rounded-3xl relative overflow-hidden group aurora-gradient flex flex-col justify-between min-h-[160px]">
-              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Wallet className="w-20 h-20 text-emerald-500" />
+            <motion.div variants={itemVariants} className="glass-panel p-6 rounded-3xl relative overflow-hidden group aurora-gradient flex flex-col justify-between min-h-[180px]">
+              <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Wallet className="w-32 h-32 text-emerald-500" />
               </div>
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start relative z-10">
                 <p className="text-xs font-semibold text-emerald-500/80 tracking-widest uppercase">AI Recovered</p>
-                <div className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{actionsTaken} Actions</div>
+                <div className="text-[10px] font-bold tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20 uppercase">{actionsTaken} Actions</div>
               </div>
-              <div>
-                <h2 className="text-3xl font-light tracking-tight mt-2 text-glow">{formatCurrency(recoveredAmount)}</h2>
-                <div className="h-10 mt-2 w-full opacity-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <Area type="monotone" dataKey="recovered" stroke="#10b981" strokeWidth={1.5} fillOpacity={0.2} fill="#10b981" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="relative z-10 mt-6">
+                <h2 className="text-4xl font-light tracking-tight text-glow">{formatCurrency(recoveredAmount)}</h2>
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-16 w-full opacity-60 z-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <Area type="monotone" dataKey="recovered" stroke="#10b981" strokeWidth={2} fillOpacity={0.15} fill="#10b981" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </motion.div>
           </motion.div>
@@ -216,7 +216,7 @@ export default function Dashboard() {
           {/* Chart Column */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
-            className="col-span-1 lg:col-span-2 glass-panel rounded-3xl p-6 flex flex-col"
+            className="col-span-1 lg:col-span-2 glass-panel rounded-3xl p-6 flex flex-col min-h-[180px]"
           >
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold tracking-tight">Recovery Performance</h3>
@@ -225,9 +225,9 @@ export default function Dashboard() {
                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div> Recovered</div>
               </div>
             </div>
-            <div className="flex-1 min-h-[200px]">
+            <div className="flex-1 w-full min-h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorRisk" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
