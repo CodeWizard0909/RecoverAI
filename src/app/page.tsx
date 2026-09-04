@@ -63,11 +63,6 @@ export default function Dashboard() {
     }
   }, []);
 
-  const handleVoiceDispatch = async (paymentId: string) => {
-    setDispatchingVoice(paymentId);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setDispatchingVoice(null);
-  };
 
   const openRazorpayModal = async (payment: PaymentRow, isPartial: boolean) => {
     if (!window.Razorpay) {
