@@ -182,6 +182,20 @@ export default function Dashboard() {
     }, 2000);
   };
 
+  const handleResetDemo = async () => {
+    try {
+      const response = await fetch('/api/demo/reset', { method: 'POST' });
+      if (!response.ok) {
+        throw new Error('Reset failed');
+      }
+      await fetchData(); // Refresh UI with clean state
+      alert('Demo state has been reset!');
+    } catch (e) {
+      console.error('Reset error:', e);
+      alert('Failed to reset demo state. Check console for details.');
+    }
+  };
+
   const handleVoiceDispatch = async (paymentId: string) => {
     setDispatchingVoice(paymentId);
     // In a real app, this would hit /api/voice/dispatch which calls Bland AI.
@@ -245,6 +259,16 @@ export default function Dashboard() {
             >
               {triggering ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
               Analyze & Plan
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 bg-gray-600/20 rounded-full flex items-center justify-center text-gray-400 text-xs font-bold border border-gray-500/30 shadow-lg">3</span>
+            <button 
+              onClick={handleResetDemo}
+              className="px-5 py-2.5 rounded-full text-sm font-semibold bg-gray-500 hover:bg-gray-600 text-gray-100 transition-all flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" /> Reset Demo
             </button>
           </div>
         </div>

@@ -223,6 +223,8 @@ def process_pending_failures():
                             logger.error(f"⚠️ [Agent] Execution Error in {fn.name}: {e}")
                             result = f"ExecutionError: {e}"
                             
+                        logger.info(f"📝 [Agent] Tool {fn.name} result: {str(result)[:100]}...")
+                        
                         response = chat.send_message(
                             types.Part.from_function_response(
                                 name=fn.name,
@@ -230,6 +232,7 @@ def process_pending_failures():
                             )
                         )
                 
+                logger.info(f"🎯 [Agent] Completed reasoning for payment {payment['id']}")
                 success_count += 1
             except Exception as e:
                 logger.error(f"[Agent] Failed to process payment {payment['id']}: {e}")
