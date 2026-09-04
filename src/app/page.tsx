@@ -50,6 +50,8 @@ export default function Dashboard() {
   // Chart Data (Mock trend + live data)
   const [chartData, setChartData] = useState<{time: string, risk: number, recovered: number}[]>([]);
 
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
   // Inject Razorpay SDK script once on mount
   useEffect(() => {
     if (!document.getElementById('razorpay-sdk')) {
@@ -61,52 +63,64 @@ export default function Dashboard() {
     }
   }, []);
 
-  const openRazorpayModal = async (payment: PaymentRow, isPartial = false) => {
+  const handleVoiceDispatch = async (paymentId: string) => {
+    setDispatchingVoice(paymentId);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setDispatchingVoice(null);
+  };
+
+  const openRazorpayModal = async (payment: PaymentRow, isPartial: boolean) => {
+    if (!window.Razorpay) {
+      alert('Razorpay SDK failed to load. Are you online?');
+      return;
+    }
+
     setPayingId(payment.id);
+
     try {
-      const res = await fetch('/api/payment/create-order', {
+      const response = await fetch('/api/payment/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: isPartial ? Math.floor(payment.amount / 2) : payment.amount,
+          paymentId: payment.id,
+          amount: payment.amount,
           currency: payment.currency || 'INR',
-          paymentId: payment.razorpay_payment_id,
-          email: payment.customer_email,
-          phone: payment.customer_phone,
+          isPartial
         })
       });
-      const order = await res.json();
-      if (!order.orderId) throw new Error('Order creation failed');
 
-      const rzp = new window.Razorpay({
-        key: order.keyId,
-        amount: order.amount,
-        currency: order.currency,
-        name: 'RecoverAI',
-        description: `Recovery for ${payment.razorpay_payment_id}`,
-        order_id: order.orderId,
-        prefill: { email: order.email, contact: order.phone },
-        theme: { color: '#10b981' },
-        handler: async () => {
-          // Payment successful — immediately mark as recovered in DB
-          await fetch('/api/webhooks/razorpay', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              event: 'payment_link.paid',
-              payload: {
-                payment_link: {
-                  entity: {
-                    notes: { original_payment_id: payment.razorpay_payment_id }
-                  }
-                }
-              }
-            })
-          });
-          await fetchData();
+      if (!response.ok) throw new Error('Order creation failed');
+      
+      const orderData = await response.json();
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "RecoverAI Demo",
+        description: isPartial ? "Partial Payment (50% OFF)" : "Full Outstanding Payment",
+        order_id: orderData.orderId,
+        prefill: {
+          email: payment.customer_email || 'demo@example.com',
+          contact: payment.customer_phone || '9999999999'
         },
-        modal: { ondismiss: () => setPayingId(null) }
+        theme: {
+          color: "#10b981" // emerald-500
+        },
+        handler: function () {
+          // On successful payment, the Razorpay webhook handles DB updates.
+          // We just re-fetch the data to update the UI instantly.
+          fetchData();
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      
+      rzp.on('payment.failed', function (response: any) {
+        console.error("Payment failed", response.error);
+        alert(response.error.description);
       });
+
       rzp.open();
     } catch (e) {
       console.error('Razorpay modal error:', e);
@@ -146,6 +160,7 @@ export default function Dashboard() {
       console.error(e);
     } finally {
       setLoading(false);
+      setLastUpdated(new Date());
     }
   };
 
@@ -214,22 +229,29 @@ export default function Dashboard() {
           </h1>
         </div>
         <div className="flex gap-4">
-          <button 
-            onClick={handleInject}
-            disabled={injecting}
-            className="px-5 py-2.5 rounded-full text-sm font-semibold bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center gap-2 disabled:opacity-50"
-          >
-            {injecting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-amber-400" />}
-            ① Simulate Failure
-          </button>
-          <button 
-            onClick={handleTrigger}
-            disabled={triggering}
-            className="px-5 py-2.5 rounded-full text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-emerald-950 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center gap-2 disabled:opacity-50"
-          >
-            {triggering ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
-            ② Analyze & Plan
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 bg-white/10 rounded-full flex items-center justify-center text-white/80 text-xs font-bold border border-white/20 shadow-lg">1</span>
+            <button 
+              onClick={handleInject}
+              disabled={injecting}
+              className="px-5 py-2.5 rounded-full text-sm font-semibold bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              {injecting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-amber-400" />}
+              Simulate Failure
+            </button>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400 text-xs font-bold border border-emerald-500/30 shadow-lg">2</span>
+            <button 
+              onClick={handleTrigger}
+              disabled={triggering}
+              className="px-5 py-2.5 rounded-full text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-emerald-950 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center gap-2 disabled:opacity-50"
+            >
+              {triggering ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
+              Analyze & Plan
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -332,7 +354,14 @@ export default function Dashboard() {
             <h3 className="text-xl font-semibold tracking-tight">Active Interventions</h3>
             <p className="text-sm text-white/50 mt-1">Live feed of webhook failures and AI recovery strategies.</p>
           </div>
-          {loading && <RefreshCw className="w-5 h-5 animate-spin text-white/30" />}
+          <div className="flex items-center gap-3">
+            {lastUpdated && (
+              <span className="text-xs text-white/40 font-mono bg-white/5 px-2 py-1 rounded">
+                Updated: {lastUpdated.toLocaleTimeString()}
+              </span>
+            )}
+            {loading && <RefreshCw className="w-5 h-5 animate-spin text-white/30" />}
+          </div>
         </div>
 
         <div className="glass-panel rounded-3xl overflow-hidden border border-white/10">
