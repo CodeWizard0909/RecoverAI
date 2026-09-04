@@ -105,8 +105,15 @@ export default function Dashboard() {
         theme: {
           color: "#10b981" // emerald-500
         },
-        handler: function () {
-          // On successful payment, the Razorpay webhook handles DB updates.
+        handler: async function (response: any) {
+          // On successful payment, the Razorpay webhook handles DB updates in production.
+          // Since webhooks can't hit localhost, we manually ping our backend to mark it recovered.
+          await fetch('/api/payment/simulate-success', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId: payment.id })
+          });
+          
           // We just re-fetch the data to update the UI instantly.
           fetchData();
         }
