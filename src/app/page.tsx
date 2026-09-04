@@ -10,7 +10,6 @@ import {
   PhoneCall,
   RefreshCw,
   Zap,
-  TrendingUp,
   BrainCircuit,
   Wallet
 } from "lucide-react";
@@ -166,32 +165,50 @@ export default function Dashboard() {
         {/* Top Stats & Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
           
-          {/* Stats Column */}
+          {/* Stats Column - Bento Grid */}
           <motion.div 
             variants={containerVariants} initial="hidden" animate="show"
-            className="col-span-1 flex flex-col gap-6"
+            className="col-span-1 flex flex-col gap-4"
           >
-            <motion.div variants={itemVariants} className="glass-panel p-6 rounded-3xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <AlertCircle className="w-24 h-24 text-rose-500" />
+            {/* Bento Box 1: Revenue at Risk */}
+            <motion.div variants={itemVariants} className="glass-panel p-5 rounded-3xl relative overflow-hidden group flex flex-col justify-between min-h-[160px]">
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                <AlertCircle className="w-20 h-20 text-rose-500" />
               </div>
-              <p className="text-sm font-medium text-white/50 tracking-wider uppercase mb-1">Revenue at Risk</p>
-              <h2 className="text-4xl font-light tracking-tight">{formatCurrency(totalAtRisk)}</h2>
-              <div className="mt-4 flex items-center gap-2 text-xs font-medium text-rose-400 bg-rose-500/10 w-fit px-2.5 py-1 rounded-full border border-rose-500/20">
-                <TrendingUp className="w-3 h-3" />
-                <span>Requires Attention</span>
+              <div className="flex justify-between items-start">
+                <p className="text-xs font-semibold text-white/50 tracking-widest uppercase">Revenue at Risk</p>
+                <div className="text-xs font-medium text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">Action Required</div>
+              </div>
+              <div>
+                <h2 className="text-3xl font-light tracking-tight mt-2">{formatCurrency(totalAtRisk)}</h2>
+                <div className="h-10 mt-2 w-full opacity-50">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <Area type="monotone" dataKey="risk" stroke="#f43f5e" strokeWidth={1.5} fillOpacity={0.2} fill="#f43f5e" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </motion.div>
 
-            <motion.div variants={itemVariants} className="glass-panel p-6 rounded-3xl relative overflow-hidden group aurora-gradient">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Wallet className="w-24 h-24 text-emerald-500" />
+            {/* Bento Box 2: Recovered */}
+            <motion.div variants={itemVariants} className="glass-panel p-5 rounded-3xl relative overflow-hidden group aurora-gradient flex flex-col justify-between min-h-[160px]">
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Wallet className="w-20 h-20 text-emerald-500" />
               </div>
-              <p className="text-sm font-medium text-emerald-500/80 tracking-wider uppercase mb-1">Recovered by AI</p>
-              <h2 className="text-4xl font-light tracking-tight text-glow">{formatCurrency(recoveredAmount)}</h2>
-              <div className="mt-4 flex items-center gap-2 text-xs font-medium text-emerald-400 bg-emerald-500/10 w-fit px-2.5 py-1 rounded-full border border-emerald-500/20">
-                <CheckCircle2 className="w-3 h-3" />
-                <span>{actionsTaken} Autonomous Actions</span>
+              <div className="flex justify-between items-start">
+                <p className="text-xs font-semibold text-emerald-500/80 tracking-widest uppercase">AI Recovered</p>
+                <div className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{actionsTaken} Actions</div>
+              </div>
+              <div>
+                <h2 className="text-3xl font-light tracking-tight mt-2 text-glow">{formatCurrency(recoveredAmount)}</h2>
+                <div className="h-10 mt-2 w-full opacity-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <Area type="monotone" dataKey="recovered" stroke="#10b981" strokeWidth={1.5} fillOpacity={0.2} fill="#10b981" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </motion.div>
           </motion.div>
