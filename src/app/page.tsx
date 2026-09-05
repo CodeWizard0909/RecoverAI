@@ -154,16 +154,16 @@ export default function Dashboard() {
           
           // We just re-fetch the data to update the UI instantly.
           fetchData();
+        },
+        modal: {
+          ondismiss: function() {
+            // This reliably fires when the user clicks 'X' or clicks out of the modal without paying
+            setPayingId(null);
+          }
         }
       };
 
       const rzp = new window.Razorpay(options);
-
-      // ADD THIS BLOCK:
-      rzp.on('modal.close', function () {
-        // This fires whenever the modal is closed (by X, escape, or payment completion/cancellation)
-        setPayingId(null);
-      });
 
       rzp.on('payment.failed', function (response: any) {
         console.error("Payment failed", response.error);
