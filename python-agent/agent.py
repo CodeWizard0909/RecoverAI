@@ -132,6 +132,10 @@ def escalate_to_human(payment_id: str, amount: int, reason: str, strategy_reason
         except Exception:
             payment_meta = {}
             
+        # Help Pylance understand the type
+        if not isinstance(payment_meta, dict):
+            payment_meta = {}
+            
         currency = payment_meta.get('currency') or 'INR'
         rzp_id = payment_meta.get('razorpay_payment_id') or args.payment_id
         email = payment_meta.get('customer_email') or 'demo@example.com'
