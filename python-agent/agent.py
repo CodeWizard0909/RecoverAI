@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip('"')
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip('"')
-RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "").strip('"')
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", os.environ.get("NEXT_PUBLIC_RAZORPAY_KEY_ID", "")).strip('"')
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "").strip('"')
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
