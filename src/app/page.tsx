@@ -281,8 +281,8 @@ export default function Dashboard() {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 glass-panel border-b border-white/10 px-8 py-4 flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-            <BrainCircuit className="w-6 h-6 text-emerald-400" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+            <img src="/logo.jpg" alt="RecoverAI Logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
             RecoverAI <span className="font-light text-white/40">| Autonomous Agent</span>
