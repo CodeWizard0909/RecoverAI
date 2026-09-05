@@ -1,4 +1,7 @@
-# 🚀 RecoverAI
+<div align="center">
+  <img src="public/logo.jpg" alt="RecoverAI Logo" width="150" style="border-radius: 20px; box-shadow: 0 4px 14px rgba(16,185,129,0.3); margin-bottom: 20px;"/>
+  <h1>🚀 RecoverAI</h1>
+</div>
 
 > **An autonomous AI financial retention team that actively recovers failed SaaS payments using smart reasoning, dynamic Razorpay links, and live Voice AI.**
 
