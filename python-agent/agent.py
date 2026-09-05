@@ -125,6 +125,37 @@ def escalate_to_human(payment_id: str, amount: int, reason: str, strategy_reason
         print(json.dumps(slack_payload, indent=2))
         print("="*50 + "\n")
         
+        # Generate a real Razorpay link for the Voice AI to send
+        try:
+            res = supabase.table('failed_payments').select('currency, customer_email, customer_phone, razorpay_payment_id').eq('id', args.payment_id).limit(1).execute()
+            payment_meta = res.data[0] if getattr(res, 'data', None) and isinstance(res.data, list) and len(res.data) > 0 else {}
+        except Exception:
+            payment_meta = {}
+            
+        currency = payment_meta.get('currency') or 'INR'
+        rzp_id = payment_meta.get('razorpay_payment_id') or args.payment_id
+        email = payment_meta.get('customer_email') or 'demo@example.com'
+        phone = payment_meta.get('customer_phone') or '9999999999'
+
+        link_req = {
+            "amount": args.amount,
+            "currency": currency,
+            "description": f"VIP Recovery for {rzp_id}",
+            "customer": {
+                "email": email,
+                "contact": phone
+            },
+            "notify": {"sms": False, "email": False}
+        }
+        
+        try:
+            plink = rzp_client.payment_link.create(link_req)  # type: ignore
+            short_url = plink.get('short_url', '') if isinstance(plink, dict) else ''
+            # Append the link to the reasoning so the frontend can extract it for Voice AI
+            args.strategy_reasoning += f" | LINK: {short_url}"
+        except Exception as e:
+            logger.error(f"Failed to generate VIP link: {e}")
+            
         supabase.table('recovery_actions').insert({
             'payment_id': args.payment_id,
             'type': 'escalate',
@@ -134,7 +165,7 @@ def escalate_to_human(payment_id: str, amount: int, reason: str, strategy_reason
         }).execute()
         
         supabase.table('failed_payments').update({'status': 'recovery_in_progress'}).eq('id', args.payment_id).execute()
-        return "Successfully escalated to human operator."
+        return f"Successfully escalated to human operator. VIP Link generated."
     except ValidationError as ve:
         return f"Input Validation Error: {ve}"
     except Exception as e:
