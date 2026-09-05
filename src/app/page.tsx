@@ -603,7 +603,7 @@ export default function Dashboard() {
                                     </p>
                                     
                                     <div className="flex flex-wrap gap-2">
-                                      {!isRecovered && (link || action.type === 'escalate') && (
+                                      {!isRecovered && link && (
                                         <button
                                           onClick={() => openRazorpayModal(p, false)}
                                           disabled={payingId === p.id}
@@ -624,8 +624,8 @@ export default function Dashboard() {
                                         </button>
                                       )}
                                       
-                                      {/* Feature 3: Voice AI Dispatch Button (Only for VIP > 50,000 INR) */}
-                                      {!isRecovered && (p.amount >= 5000000) && (
+                                      {/* Feature 3: Voice AI Dispatch Button (Only for High Risk) */}
+                                      {!isRecovered && (partialLink || action.type === 'escalate') && (
                                         <button 
                                           onClick={() => handleVoiceDispatch(p.id)}
                                           disabled={dispatchingVoice === p.id && callStatus !== "active"}
