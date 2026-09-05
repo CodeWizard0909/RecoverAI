@@ -603,7 +603,7 @@ export default function Dashboard() {
                                     </p>
                                     
                                     <div className="flex flex-wrap gap-2">
-                                      {!isRecovered && (link || action.type === 'escalate') && (
+                                      {!isRecovered && link && (
                                         <button
                                           onClick={() => openRazorpayModal(p, false)}
                                           disabled={payingId === p.id}
