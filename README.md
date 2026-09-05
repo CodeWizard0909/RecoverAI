@@ -26,7 +26,11 @@ The agent autonomously integrates with the Razorpay Python SDK to generate targe
 - **50% Upfront Partial Payment:** If the AI detects an "insufficient funds" error, it gracefully degrades the payment demand and generates a custom 50% partial payment link to ease the customer's burden and save the account.
 
 ### 📞 VIP Voice AI Dispatch (Powered by Vapi)
-Emails aren't enough for massive enterprise failures. If a high-ticket transaction (e.g., ₹75,000+) fails, the AI flags the account as VIP. Through our Next.js dashboard, you can click **"Dispatch Voice AI"**, which instantly triggers a **live WebRTC voice call** using the **Vapi SDK**. The AI assistant (Sarah) is dynamically seeded with the exact context of the failure and speaks to the customer to resolve the issue on the spot.
+Emails aren't enough for massive enterprise failures. If a high-ticket transaction (e.g., ₹75,000+) fails, the AI flags the account as VIP and autonomously generates a custom Razorpay checkout link in the background. 
+Through our Next.js dashboard, you can click **"Dispatch Voice AI"**, which instantly triggers a **live WebRTC voice call** using the **Vapi SDK**. The AI assistant (Sarah) is dynamically seeded with the exact context of the failure and speaks to the customer to resolve the issue on the spot.
+
+### ✉️ Real-Time Tool Calling & Email Delivery (Powered by Resend)
+During the live Voice AI call, if the customer agrees to pay, the Voice AI utilizes **Autonomous Tool Calling** to trigger a backend function. Our Next.js backend intercepts this tool call and uses the **Resend API** to instantly dispatch a beautifully formatted HTML email containing the exact Razorpay link to the customer's inbox—all while they are still on the phone!
 
 ### 🛡️ Graceful Agentic Escalation
 We leverage Google GenAI's Automatic Function Calling (AFC). If the agent encounters a broken API or a Razorpay SDK `ServerError` while trying to generate a link, it doesn't just crash. The LLM catches the exception and autonomously decides to use the `escalate_to_human` tool to ping the Slack support channel instead, ensuring no VIP customer slips through the cracks.
