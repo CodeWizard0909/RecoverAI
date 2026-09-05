@@ -3,13 +3,16 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
+    const { paymentLink } = await req.json();
     const targetEmail = process.env.RESEND_TARGET_EMAIL;
 
     if (!targetEmail) {
       throw new Error("Missing RESEND_TARGET_EMAIL in env");
     }
+
+    const finalLink = paymentLink || "https://razorpay.com";
 
     const { data, error } = await resend.emails.send({
       from: 'RecoverAI <onboarding@resend.dev>', // resend.dev allows sending to your own verified email without domain verification
@@ -32,7 +35,7 @@ export async function POST() {
             </p>
             
             <div style="text-align: center; margin: 40px 0;">
-              <a href="https://rzp.io/l/demo-recover-link" style="background-color: #10b981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
+              <a href="${finalLink}" style="background-color: #10b981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
                 Pay Securely via Razorpay
               </a>
             </div>

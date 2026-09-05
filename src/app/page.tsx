@@ -57,6 +57,7 @@ export default function Dashboard() {
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const vapiRef = useRef<any>(null);
+  const activeLinkRef = useRef<string | null>(null); // Added this to track the real link
 
   // Initialize Vapi on mount
   useEffect(() => {
@@ -69,8 +70,19 @@ export default function Dashboard() {
     
     // Listen for AI tool calls (like sending the SMS link)
     vapiRef.current.on('message', (message: any) => {
-      if (message.type === 'function-call' && message.functionCall.name === 'send_secure_link') {
+      console.log("Vapi Message:", message);
+      if (
+        (message.type === 'function-call' && message.functionCall?.name === 'send_secure_link') ||
+        (message.type === 'tool-calls' && message.toolCallList?.some((t: any) => t.function?.name === 'send_secure_link'))
+      ) {
         alert("📲 BEEP! [System Output]: Secure Razorpay link just sent to customer's SMS and Email in real-time!");
+        
+        // Trigger backend to actually send the real email with the real Razorpay link
+        fetch('/api/voice/send-email', { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentLink: activeLinkRef.current })
+        }).catch(console.error);
       }
     });
     
@@ -230,6 +242,10 @@ export default function Dashboard() {
   const handleVoiceDispatch = async (paymentId: string) => {
     const payment = payments.find(p => p.id === paymentId);
     if (!payment) return;
+
+    // Extract the real link from the agent's reasoning trace
+    const linkMatch = payment.agent_reasoning?.match(/\| (?:PARTIAL_LINK|LINK): (https:\/\/[^\s|]+)/);
+    activeLinkRef.current = linkMatch ? linkMatch[1] : null;
 
     if (callStatus === "active") {
       vapiRef.current?.stop();
