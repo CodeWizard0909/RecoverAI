@@ -40,3 +40,10 @@ docs/
 specs/
 *.md
 !README.md
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*test*.py
+
