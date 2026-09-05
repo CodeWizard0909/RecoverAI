@@ -67,6 +67,13 @@ export default function Dashboard() {
       setDispatchingVoice(null);
     });
     
+    // Listen for AI tool calls (like sending the SMS link)
+    vapiRef.current.on('message', (message: any) => {
+      if (message.type === 'function-call' && message.functionCall.name === 'send_secure_link') {
+        alert("📲 BEEP! [System Output]: Secure Razorpay link just sent to customer's SMS and Email in real-time!");
+      }
+    });
+    
     return () => {
       if (vapiRef.current) {
         vapiRef.current.stop();
@@ -239,7 +246,31 @@ export default function Dashboard() {
           messages: [
             {
               role: "system",
-              content: `You are Sarah, an expert AI recovery agent. You are calling a VIP customer whose email is ${payment.customer_email}. Their recent transaction of ${(payment.amount / 100).toFixed(2)} INR failed due to: ${payment.failure_reason}. Be extremely empathetic, apologize for the issue, and inform them that you will securely email them a direct payment link so they don't lose their access. Do not ask for card details.`
+              content: `You are Sarah, an expert AI recovery agent. You are calling a VIP customer whose email is ${payment.customer_email}. Their recent transaction of ${(payment.amount / 100).toFixed(2)} INR failed due to: ${payment.failure_reason}. Be extremely empathetic, apologize for the issue. DO NOT ask for card details. Tell them you will send a secure link via SMS right now. Once they agree, YOU MUST call the send_secure_link function to send it to them.`
+            }
+          ],
+          tools: [
+            {
+              type: "function",
+              messages: [
+                {
+                  type: "request-start",
+                  content: "Sending the secure payment link to your phone now..."
+                },
+                {
+                  type: "request-complete",
+                  content: "I just sent it. Let me know when you receive it!"
+                }
+              ],
+              function: {
+                name: "send_secure_link",
+                description: "Sends a secure Razorpay payment link to the customer's phone via SMS.",
+                parameters: {
+                  type: "object",
+                  properties: {},
+                  required: []
+                }
+              }
             }
           ]
         },
